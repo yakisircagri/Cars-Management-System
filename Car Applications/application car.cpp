@@ -1,325 +1,226 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#pragma pack(1)
-typedef struct 
+#include <iostream>
+#include<string>
+#include<iomanip>
+#include<vector>
+#include<cstdlib>
+#include<limits>
+
+using namespace std;
+
+static int readInt(const std::string& prompt)
 {
-	char plate[10];
-	char brand[30];
-	int year;
-	float price;
-	int status;
-} Car;
-int menu()
-{
-	int choice,k;
-	do
+	while (true)
 	{
-		printf("----MENU-----\n");
-		printf("1. Record\n");
-		printf("2. Rent A Car\n");
-		printf("3. Return a Car\n");
-		printf("4. Deleting a Car\n");
-		printf("5. Updating a Record\n");
-		printf("6. Listing All Cars\n");
-		printf("7. Listing Available Cars\n");
-		printf("8. Listing Rented Cars\n");
-		printf("9. Exit\n");
-		printf("----->Your Selection:");
-		k=scanf("%d",&choice);
-		fflush(stdin);
-		if(k<1 | choice >9) printf("\nInvalid selection. Please select again!\n");
-	} while(k<1 || choice>9);
-	return choice;
-}
-void removeEnter(char *str)
-{
-	str[strlen(str)-1]='\0';
-	return;
-}
-void recordCar(char *fname)
-{
-	FILE *fp;
-	fp=fopen(fname,"ab");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	Car car;
-	printf("Enter Plate Number:");
-	fgets(car.plate,10,stdin);
-	removeEnter(car.plate);
-	printf("Enter Brand :");
-	fgets(car.brand,30,stdin);
-	removeEnter(car.brand);
-	printf("Enter year:");
-	scanf("%d",&car.year);
-	fflush(stdin);
-	printf("Enter price:");
-	scanf("%f",&car.price);
-	fflush(stdin);
-	car.status=0;
-	fwrite(&car,sizeof(Car),1,fp);
-	fclose(fp);
-	return;
-}
-void listAllCars(char *fname)
-{
-	FILE *fp;
-	Car car;
-	fp=fopen(fname,"rb");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	while(!feof(fp))
-	{
-		fread(&car,sizeof(car),1,fp);
-		if(feof(fp)) break;
-		printf("%s\t%s\t%d\t%f\t%d\n",car.plate,car.brand,car.year,car.price,car.status);
-	}
-	fclose(fp);
-	return;
-}
-void rentCar(char *fname)
-{
-	FILE *fp;
-	Car car;
-	int k,i;
-	fp=fopen(fname,"r+b");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	fseek(fp,0,SEEK_END);
-	k=ftell(fp)/sizeof(Car);
-	fseek(fp,0,SEEK_SET);
-	for(i=0;i<k;i++)
-	{
-		fread(&car,sizeof(Car),1,fp);
-		if(car.status==0)
+		cout << prompt;
+		int value;
+		if (cin >> value)
 		{
-			printf("Plate:%s\n",car.plate);
-			printf("Brand:%s\n",car.brand);
-			printf("Year :%d\n",car.year);
-			printf("Price:%f\n",car.price);
-			car.status=1;
-			fseek(fp,i*sizeof(Car),SEEK_SET);
-			fwrite(&car,sizeof(Car),1,fp);
-			fclose(fp);
-			printf("\nThe car is rented\n");
-			return;
+			return value;
 		}
+
+		// Handle non-numeric input: clear fail state and discard the line.
+		cin.clear();
+		cin.ignore(numeric_limits<streamsize>::max(), '\n');
+		cout << "Invalid input. Please enter a number." << endl;
 	}
-	printf("\nThere is no car for renting\n");
-	fclose(fp);
-	return;
-}
-void returnCar(char *fname)
-{
-	FILE *fp;
-	Car car;
-	char plate[10];
-	int k,i;
-	fp=fopen(fname,"r+b");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	printf("Enter Plate Number:");
-	fgets(plate,10,stdin);
-	removeEnter(plate);
-	fseek(fp,0,SEEK_END);
-	k=ftell(fp)/sizeof(Car);
-	fseek(fp,0,SEEK_SET);
-	for(i=0;i<k;i++)
-	{
-		fread(&car,sizeof(Car),1,fp);
-		if(strcmp(plate,car.plate)==0 && car.status==1)
-		{
-			car.status=0;
-			fseek(fp,i*sizeof(Car),SEEK_SET);
-			fwrite(&car,sizeof(Car),1,fp);
-			fclose(fp);
-			printf("\nThe car is returned\n");
-			return;
-		}
-	}
-	printf("\nThe car plate is not found in the file\n");
-	fclose(fp);
-}
-void deleteCar(char *fname)
-{
-	FILE *fp;
-	Car *car;
-	char plate[10];
-	int k,i;
-	fp=fopen(fname,"r+b");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	printf("Enter Plate Number:");
-	fgets(plate,10,stdin);
-	removeEnter(plate);
-	fseek(fp,0,SEEK_END);
-	k=ftell(fp)/sizeof(Car);
-	if(k==0) 
-	{
-		printf("There is no car in the file\n");
-		fclose(fp);
-		return;
-	}
-	fseek(fp,0,SEEK_SET);
-	car=(Car*) malloc(k*sizeof(Car));
-	if(car==NULL)
-	{
-		printf("Not enough memory");
-		fclose(fp);
-		return;
-	}
-	fread(car,sizeof(Car),k,fp);
-	fclose(fp);
-	fp=fopen(fname,"wb");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	for(i=0;i<k;i++)
-		if(strcmp(plate,car[i].plate)!=0) fwrite(&car[i],sizeof(Car),1,fp);
-	printf("The car is deleted\n");
-	fclose(fp);
-	return;
-}
-void updateCar(char *fname)
-{
-	FILE *fp;
-	Car car;
-	char plate[10];
-	int k,i;
-	fp=fopen(fname,"r+b");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	printf("Enter Plate Number:");
-	fgets(plate,10,stdin);
-	removeEnter(plate);
-	fseek(fp,0,SEEK_END);
-	k=ftell(fp)/sizeof(Car);
-	fseek(fp,0,SEEK_SET);
-	for(i=0;i<k;i++)
-    {
-    	fread(&car,sizeof(car),1,fp);
-    	if(strcmp(plate,car.plate)==0)
-    	{
-    		printf("Enter Plate Number:");
-			fgets(car.plate,10,stdin);
-			removeEnter(car.plate);
-			printf("Enter Brand :");
-			fgets(car.brand,30,stdin);
-			removeEnter(car.brand);
-			printf("Enter year:");
-			scanf("%d",&car.year);
-			fflush(stdin);
-			printf("Enter price:");
-			scanf("%f",&car.price);
-			fflush(stdin);
-			printf("Enter status:");
-			scanf("%d",&car.status);
-			fflush(stdin);
-			fseek(fp,i*sizeof(Car),SEEK_SET);
-			fwrite(&car,sizeof(Car),1,fp);
-			fclose(fp);
-			return;
-		}
-	}
-	printf("\nThe car is not found for updating\n");
-	fclose(fp);
-	return;
-}
-void listAvailableCars(char *fname)
-{
-	FILE *fp;
-	Car car;
-	fp=fopen(fname,"rb");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	while(!feof(fp))
-	{
-		fread(&car,sizeof(car),1,fp);
-		if(feof(fp)) break;
-		if(car.status==0)printf("%s\t%s\t%d\t%f\t%d\n",car.plate,car.brand,car.year,car.price,car.status);
-	}
-	fclose(fp);
-	return;
-}
-void listRentedCars(char *fname)
-{
-	FILE *fp;
-	Car car;
-	fp=fopen(fname,"rb");
-	if(fp==NULL)
-	{
-		printf("File opening error");
-		return;
-	}
-	while(!feof(fp))
-	{
-		fread(&car,sizeof(car),1,fp);
-		if(feof(fp)) break;
-		if(car.status==1)printf("%s\t%s\t%d\t%f\t%d\n",car.plate,car.brand,car.year,car.price,car.status);
-	}
-	fclose(fp);
-	return;
-}
-int main()
-{
-	int choice;
-	char *fname="car.bin";
-	do
-	{
-		choice=menu();
-		switch(choice)
-		{
-			case 1:
-				recordCar(fname);
-				break;
-			case 2:
-				rentCar(fname);
-				break;
-			case 3:
-				returnCar(fname);
-				break;
-			case 4:
-				deleteCar(fname);
-				break;
-			case 5: 
-			    updateCar(fname);
-			    break;
-			case 6:
-				listAllCars(fname);
-				break;
-			case 7:
-				listAvailableCars(fname);
-				break;
-			case 8:
-				listRentedCars(fname);
-				break;
-			case 9:
-				break;
-		} 
-	}while(choice!=9);
-	return 0;
 }
 
+// CLASSES
+
+class Car {
+public:
+	string carName;
+	int carModel;
+	int carPrice;
+};
+
+class Member {
+public:
+	string MemberName;
+	string MemberSurname;
+	string MemberAdress;
+	int MemberID;
+};
+
+//Vector
+
+vector<Car> cars;
+vector<Member> members;
+
+//ADDING
+
+void CarAdd() {
+	Car car;
+	cout << "Enter car name: ";
+	cin>> car.carName;
+	cout << "Enter car model: ";
+	cin >> car.carModel;
+	cout << "Enter car price: ";
+	cin >> car.carPrice;
+	cout << "Car added succesfully." << endl;
+
+	cars.push_back(car);
+}
+
+void MemberAdd() {
+	Member member;
+	cout << "Enter member name: ";
+	cin >> member.MemberName;
+	cout << "Enter member surname: ";
+	cin >> member.MemberSurname;
+	cout << "Enter member adress: ";
+	cin>> member.MemberAdress;
+	cout << "Enter member ID: ";
+	cin>> member.MemberID;
+	cout << "Member added succesfully."<<endl;
+	members.push_back(member);
+}
+
+//LISTING
+
+void CarsList() {
+	cout << "Cars" << endl;
+	cout << left << setw(20) << "Name" << setw(10) << "Model" << setw(10) << "Price" << endl;
+	cout << setfill('-') << setw(40) << "" << setfill(' ') << endl;
+
+	for (const auto& car : cars) {
+		cout << left << setw(20) << car.carName << setw(10) << car.carModel << setw(10) << car.carPrice << endl;
+	}
+}
+
+void MemberList() {
+	cout << "Members" << endl;
+	cout << left << setw(20) << "Name" << setw(10) << "Surname" << setw(20) << "Adress" << setw(10) << "ID" << endl;
+	cout << setfill('-') << setw(60) << "" << setfill(' ') << endl;
+
+	for (const auto& member : members) {
+		cout << left << setw(20) << member.MemberName << setw(10) << member.MemberSurname << setw(20) << member.MemberAdress << setw(10) << member.MemberID << endl;
+	}
+}
+
+
+//SEARCH
+
+
+void SearchCar() {
+	string searchName;
+	cout << "Enter car name to search: ";
+	cin >> searchName;
+
+	for (const auto& car : cars) {
+		if (car.carName == searchName) {
+			cout << "Car found." << endl;
+			cout << left << setw(20) << "Name" << setw(10) << "Model" << setw(10) << "Price" << endl;
+			cout << setfill('-') << setw(40) << "" << setfill(' ') << endl;
+			cout << left << setw(20) << car.carName << setw(10) << car.carModel << setw(10) << car.carPrice << endl;
+			return;
+		}
+	}
+
+	cout << "Car not found." << endl;
+}
+
+void SearchMember() {
+	int searchID;
+	cout << "Enter member ID to search: ";
+	cin >> searchID;
+
+	for (const auto& member : members) {
+		if (member.MemberID == searchID) {
+			cout << "Member found." << endl;
+			cout << left << setw(20) << "Name" << setw(10) << "Surname" << setw(20) << "Adress" << setw(10) << "ID" << endl;
+			cout << setfill('-') << setw(60) << "" << setfill(' ') << endl;
+			cout << left << setw(20) << member.MemberName << setw(10) << member.MemberSurname << setw(20) << member.MemberAdress << setw(10) << member.MemberID << endl;
+			return;
+		}
+	}
+
+	cout << "Member not found." << endl;
+}
+
+//DELETE
+void DeleteCar() {
+	string deleteName;
+	cout << "Enter car name to delete: ";
+	cin >> deleteName;
+
+	for (auto it = cars.begin(); it != cars.end(); ++it) {
+		if (it->carName == deleteName) {
+			cars.erase(it);
+			cout << "Car deleted successfully." << endl;
+			return;
+		}
+	}
+
+	cout << "Car not found." << endl;
+}
+
+void DeleteMember() {
+	int deleteID;
+	cout << "Enter member ID to delete: ";
+	cin >> deleteID;
+
+	for (auto it = members.begin(); it != members.end(); ++it) {
+		if (it->MemberID == deleteID) {
+			members.erase(it);
+			cout << "Member deleted successfully." << endl;
+			return;
+		}
+	}
+
+	cout << "Member not found." << endl;
+}
+
+
+int main() {
+	int choice;
+
+	while (true) {
+		cout << "\nCar Management System" << endl;
+		cout << "1. Add Car" << endl;
+		cout << "2. Add Member" << endl;
+		cout << "3. List Cars" << endl;
+		cout << "4. List Members" << endl;
+		cout << "5. Search Car" << endl;
+		cout << "6. Search Member" << endl;
+		cout << "7. Delete Car" << endl;
+		cout << "8. Delete Member" << endl;
+		cout << "9. Exit" << endl;
+
+		choice = readInt("Enter your choice: ");
+
+		switch (choice) {
+		case 1:
+			CarAdd();
+			break;
+		case 2:
+			MemberAdd();
+			break;
+		case 3:
+			CarsList();
+			break;
+		case 4:
+			MemberList();
+			break;
+		case 5:
+			SearchCar();
+			break;
+		case 6:
+			SearchMember();
+			break;
+		case 7:
+			DeleteCar();
+			break;
+		case 8:
+			DeleteMember();
+			break;
+		case 9:
+			cout << "Exiting program." << endl;
+			return 0;
+		default:
+			cout << "Invalid choice. Please try again." << endl;
+		}
+	}
+
+	return 0;
+}
